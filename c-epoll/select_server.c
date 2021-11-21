@@ -1,8 +1,20 @@
 /**
  *
  * 这个例子是学习 select 函数。
+ *
+ * select io 多路复用使用的函数只有使用 select，原型是
+ *
+ * int select(int nfds, fd_set *readfds, fd_set *writefds,
+ *                fd_set *exceptfds, struct timeval *timeout);
+ *
+ * 重要的是要理解 nfds 和 fd_set 的概念。
+ *
+ * nfds 表示 select 函数需要检测多少个 fd，它是加入到 fd_set 的最大 fd + 1。
+ *
+ *
  * 参考：
  * 1.https://blog.csdn.net/fengel_cs/article/details/78645140
+ * 2.https://blog.csdn.net/zhougb3/article/details/79792089
  *
  */
 
