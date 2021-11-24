@@ -1,5 +1,14 @@
 /**
  *
+ * 一、使用
+ * 1.files: select_server.c select_client.c
+ * 2.compile:
+ * 1).gcc -o select_server.bin select_server.c
+ * 2).gcc -o select_client.bin select_client.c
+ * 3.执行
+ * select_server.bin 和 select_client.bin
+ *
+ * 二、介绍
  * 这个例子是学习 select 函数。
  *
  * select io 多路复用使用的函数只有使用 select，原型是
@@ -10,11 +19,31 @@
  * 重要的是要理解 nfds 和 fd_set 的概念。
  *
  * nfds 表示 select 函数需要检测多少个 fd，它是加入到 fd_set 的最大 fd + 1。
+ * fd_set 使用"位"来表示需要检查的 fd，一般 fd_set 是 1024 位，这是由操作系统编译时决定的。
+ *
+ * 举个例子，假如 fd_set 是一个字节长度，也就是 8 为，初始时（也就是调用了 FD_ZERO）后是 00000000 。8个0
+ * 如果使用 FD_SET 将 fd 为 3 的文件加入进来，则 fd_set 的表示就是 00010000，从左边开始数的第4位设置为 1。
+ * 因为 fd 的计数是从 0 开始，所以 nfds 需要告诉 select 最多检查多少个 fd，也就是 3 + 1 = 4，这就是最大 fd + 1 的原因。
+ *
+ * 那么 select 如何实现没有关心的事件时阻塞进程，有事件就绪或者超时时进程又唤醒呢？
+ * 睡眠唤醒机制：
+ * 每个 socket 都有一个 sleep_list 睡眠队列，队列的元素是 wait_entry ，wait_entry 包括等待该 socket 事件就绪的进程 pid。
+ * 当用户调用 select 函数时，内核需要遍历关心的 socket 事件是否就绪，如果没有就绪，就在这些 socket 的 sleep_list 加上 wait_entry 节点。
+ * 然后调用 schedule_timeout 使当前进程让出CPU，该进程此时不在CPU调度队列。当：
+ * 1)等待超时后，内核将该进程唤醒，加入到CPU调度队列，然后再次挨个检查所有的 scoket 是否有事件就绪；
+ * 2)如果某个 socket 的事件就绪，会遍历它的 sleep_list 的所有 wait_entry 节点，调用 wait_entry 节点的 callback，它会做唤醒进程的操作；
+ * 如果有关心的 scoket 事件就绪，本次就不用阻塞或者调用 schedule_timeout 让出 CPU。
+ *
+ * 使用 select 的弊端：
+ * 1)fd_set 的长度受限，一般是 1024 个 fd，也就是 fd 最大为 1023，无法实现高并发，由编译时的内核决定；
+ * 2)fd_set 需要从用户态拷贝到内核态，复制也会浪费 CPU 时间；
+ * 3)有事件到来时不知道是哪个文件有事件，应用需要使用 FD_ISSET 来遍历所有的 fd 是否可读可写；
  *
  *
- * 参考：
- * 1.https://blog.csdn.net/fengel_cs/article/details/78645140
- * 2.https://blog.csdn.net/zhougb3/article/details/79792089
+ * 三、参考：
+ * 1.https://cloud.tencent.com/developer/article/1005481
+ * 2.https://blog.csdn.net/fengel_cs/article/details/78645140
+ * 3.https://blog.csdn.net/zhougb3/article/details/79792089
  *
  */
 
